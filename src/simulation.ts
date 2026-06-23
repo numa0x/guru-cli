@@ -9,7 +9,6 @@ type AlchemyBundleTransaction = { from: string; to: string; data: string }
 type SimulationLog = { address: string; data: string; topics: string[] }
 type SimulationProviderName = 'alchemy' | 'tenderly'
 
-const ALCHEMY_BUNDLE_MAX = 5
 const RATE_LIMIT_MAX_RETRIES = 16
 const RETRY_BASE_DELAY_MS = 500
 
@@ -24,11 +23,18 @@ const ZERO_GAS = {
     value: '0',
 } as const
 
-type AlchemySimulationResult = {
-    calls: Array<{ error?: string | null; revertReason?: string | null }>
+type AlchemySimulationError = { code?: number; message?: string }
+
+type AlchemySimulationCallResult = {
+    status?: string
+    returnData?: string
     logs: SimulationLog[]
-    error?: string | null
-    revertReason?: string | null
+    gasUsed?: string
+    error?: AlchemySimulationError | string
+}
+
+type AlchemySimulationBlockResult = {
+    calls?: AlchemySimulationCallResult[]
 }
 
 type TenderlyBundleResult = {
@@ -128,6 +134,20 @@ function isSimulatorInfraError(message: string): boolean {
     )
 }
 
+function simulationCallSucceeded(
+    result: AlchemySimulationCallResult | undefined
+): boolean {
+    return result?.status === '0x1'
+}
+
+function simulationErrorMessage(
+    result: AlchemySimulationCallResult | undefined
+): string | undefined {
+    if (!result) return undefined
+    if (typeof result.error === 'string') return result.error
+    return result.error?.message
+}
+
 function isRateLimitError(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error)
     const lower = message.toLowerCase()
@@ -151,10 +171,10 @@ function createTenderlyClient(chainId: number): Tenderly {
     })
 }
 
-async function callAlchemyBundle(
+async function callAlchemySimulation(
     chainId: number,
     transactions: AlchemyBundleTransaction[]
-): Promise<AlchemySimulationResult[]> {
+): Promise<AlchemySimulationCallResult[]> {
     const apiKey = getSimulationConfig().alchemyApiKey
     if (!apiKey) throw new Error('ALCHEMY_API_KEY is not set')
     const baseUrl = ALCHEMY_BASE_URL[chainId as keyof typeof ALCHEMY_BASE_URL]
@@ -170,12 +190,18 @@ async function callAlchemyBundle(
         body: JSON.stringify({
             jsonrpc: '2.0',
             id: 1,
-            method: 'alchemy_simulateExecutionBundle',
-            params: [transactions],
+            method: 'eth_simulateV1',
+            params: [
+                {
+                    blockStateCalls: [{ calls: transactions }],
+                    validation: false,
+                    traceTransfers: false,
+                },
+            ],
         }),
     })
     const json = (await response.json()) as {
-        result?: AlchemySimulationResult[]
+        result?: AlchemySimulationBlockResult[]
         error?: { message: string }
     }
     if (json.error) {
@@ -184,7 +210,11 @@ async function callAlchemyBundle(
     if (!json.result) {
         throw new Error('Empty result in Alchemy simulation response')
     }
-    return json.result
+    const calls = json.result[0]?.calls
+    if (!calls) {
+        throw new Error('Missing calls in Alchemy eth_simulateV1 response')
+    }
+    return calls
 }
 
 async function simulateSwapWithAlchemy(params: {
@@ -223,43 +253,37 @@ async function simulateSwapWithAlchemy(params: {
         data: params.callData,
     })
 
-    if (transactions.length > ALCHEMY_BUNDLE_MAX) {
-        return null
-    }
-
     try {
         const result = await retryWithIncrementalDelay(
-            () => callAlchemyBundle(params.chainId, transactions),
+            () => callAlchemySimulation(params.chainId, transactions),
             RATE_LIMIT_MAX_RETRIES,
             RETRY_BASE_DELAY_MS,
             isRateLimitError
         )
 
         for (let i = 0; i < prefixBundle.length; i++) {
-            const failure = result[i]?.error ?? result[i]?.revertReason
-            if (failure) {
+            const prefixResult = result[i]
+            if (!simulationCallSucceeded(prefixResult)) {
+                const failure = simulationErrorMessage(prefixResult)
                 return {
                     success: false,
-                    revertMessage: `prefix tx ${i} reverted: ${failure}`,
+                    revertMessage: `prefix tx ${i} reverted${failure ? `: ${failure}` : ''}`,
                 }
             }
         }
 
         const target = result[result.length - 1]
         if (!target) {
-            throw new Error('Missing swap result in Alchemy bundle response')
+            throw new Error('Missing swap result in Alchemy eth_simulateV1 response')
         }
-        const topLevelError = target.error ?? target.revertReason
-        const callLevelError =
-            target.calls[0]?.error ?? target.calls[0]?.revertReason
-        const failure = topLevelError ?? callLevelError
+        const failure = simulationErrorMessage(target)
 
         if (failure && isSimulatorInfraError(failure)) {
             return null // Alchemy could not evaluate — let Tenderly try
         }
 
         return {
-            success: !failure,
+            success: simulationCallSucceeded(target),
             revertMessage: failure ?? undefined,
         }
     } catch {
@@ -356,18 +380,16 @@ async function simulateBundleWithAlchemy(
     chainId: number,
     transactions: AlchemyBundleTransaction[]
 ): Promise<SimulationLog[] | null> {
-    if (transactions.length > ALCHEMY_BUNDLE_MAX) return null
-
     try {
         const result = await retryWithIncrementalDelay(
-            () => callAlchemyBundle(chainId, transactions),
+            () => callAlchemySimulation(chainId, transactions),
             RATE_LIMIT_MAX_RETRIES,
             RETRY_BASE_DELAY_MS,
             isRateLimitError
         )
         const target = result[result.length - 1]
-        if (!target || target.error || target.revertReason) return null
-        return target.logs
+        if (!simulationCallSucceeded(target)) return null
+        return target.logs ?? []
     } catch {
         return null
     }

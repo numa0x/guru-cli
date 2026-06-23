@@ -1,13 +1,13 @@
 {
     "name": "@guru-fund/cli",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "JSON-first agent CLI for Guru Protocol fund operations.",
     "license": "MIT",
     "type": "module",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "bin": {
-        "guru": "./dist/index.js"
+        "guru": "dist/index.js"
     },
     "files": [
         "dist",
@@ -25,7 +25,7 @@
         "prepack": "pnpm run build"
     },
     "dependencies": {
-        "@guru-fund/sdk": "^0.1.0",
+        "@guru-fund/sdk": "^0.2.0",
         "@tenderly/sdk": "^0.3.1",
         "ethers": "=6.15.0"
     },
