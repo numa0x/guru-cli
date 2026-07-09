@@ -104,6 +104,7 @@ Supported quote actions:
 -   `deposit`
 -   `withdrawal`
 -   `harvest`
+-   `close`
 -   `trade`
 -   `rebalance`
 
@@ -118,6 +119,7 @@ Usage:
 guru quote deposit --chain-id <id> --rpc-url <url> --fund <addr> --account <addr> --coin <addr> --amount <int> [--referrer-fee-bps <bps>] [--slippage-settings-bps-json <json>]
 guru quote withdrawal --chain-id <id> --rpc-url <url> --fund <addr> --account <addr> --coin <addr> --shares <int> [--referrer-fee-bps <bps>] [--slippage-settings-bps-json <json>]
 guru quote harvest --chain-id <id> --rpc-url <url> --fund <addr> --coin <addr> [--slippage-settings-bps-json <json>]
+guru quote close --chain-id <id> --rpc-url <url> --fund <addr> --coin <addr> [--slippage-settings-bps-json <json>]
 guru quote trade --chain-id <id> --rpc-url <url> --fund <addr> --token-in <addr> --token-out <addr> --amount-in <int> [--max-slippage-bps <bps>]
 guru quote rebalance --chain-id <id> --rpc-url <url> --fund <addr> --target-weights-bps-json <json> [--slippage-settings-bps-json <json>]
 guru quote tx <id> [--detail]
@@ -390,7 +392,7 @@ degraded mode if the caller supplies enough slippage intent.
 Degraded mode rules:
 
 -   `trade` requires `--max-slippage-bps`.
--   `deposit`, `withdrawal`, `harvest`, and `rebalance` require
+-   `deposit`, `withdrawal`, `harvest`, `close`, and `rebalance` require
     `--slippage-settings-bps-json`.
 -   The slippage map must cover every token the action may need to trade.
 -   The CLI prints a warning to stderr and marks `quote.degraded` as `true`.
@@ -412,7 +414,7 @@ guru quote trade \
 
 -   `deposit` and `withdrawal` are user/account actions; the transaction `from`
     is the supplied `--account`.
--   `harvest`, `trade`, and `rebalance` are manager actions; the transaction
+-   `harvest`, `close`, `trade`, and `rebalance` are manager actions; the transaction
     `from` is read from the fund ledger manager.
 
 ## Failure Modes

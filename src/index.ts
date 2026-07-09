@@ -39,6 +39,7 @@ function usage(): string {
         '  guru quote deposit --chain-id <id> --rpc-url <url> --fund <addr> --account <addr> --coin <addr> --amount <int> [--referrer-fee-bps <bps>] [--slippage-settings-bps-json <json>]',
         '  guru quote withdrawal --chain-id <id> --rpc-url <url> --fund <addr> --account <addr> --coin <addr> --shares <int> [--referrer-fee-bps <bps>] [--slippage-settings-bps-json <json>]',
         '  guru quote harvest --chain-id <id> --rpc-url <url> --fund <addr> --coin <addr> [--slippage-settings-bps-json <json>]',
+        '  guru quote close --chain-id <id> --rpc-url <url> --fund <addr> --coin <addr> [--slippage-settings-bps-json <json>]',
         '  guru quote trade --chain-id <id> --rpc-url <url> --fund <addr> --token-in <addr> --token-out <addr> --amount-in <int> [--max-slippage-bps <bps>]',
         '  guru quote rebalance --chain-id <id> --rpc-url <url> --fund <addr> --target-weights-bps-json <json> [--slippage-settings-bps-json <json>]',
         '  guru quote tx <id> [--detail]',
@@ -211,6 +212,17 @@ function parseQuoteArgs(
         }
     }
 
+    if (action === 'close') {
+        return {
+            action: 'close',
+            ...shared,
+            coin: requireString(values, 'coin'),
+            slippageSettings: parseSlippageSettingsBps(
+                values['slippage-settings-bps-json']
+            ),
+        }
+    }
+
     if (action === 'rebalance') {
         return {
             action: 'rebalance',
@@ -225,7 +237,7 @@ function parseQuoteArgs(
     }
 
     throw new Error(
-        `Unsupported action "${action}". Supported actions: deposit, withdrawal, harvest, trade, rebalance.`
+        `Unsupported action "${action}". Supported actions: deposit, withdrawal, harvest, close, trade, rebalance.`
     )
 }
 

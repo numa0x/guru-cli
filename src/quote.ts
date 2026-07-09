@@ -40,6 +40,12 @@ type HarvestArgs = SharedQuoteArgs & {
     slippageSettings?: Record<string, bigint>
 }
 
+type CloseArgs = SharedQuoteArgs & {
+    action: 'close'
+    coin: string
+    slippageSettings?: Record<string, bigint>
+}
+
 type TradeArgs = SharedQuoteArgs & {
     action: 'trade'
     tokenIn: string
@@ -58,6 +64,7 @@ export type QuoteCommandArgs =
     | DepositArgs
     | WithdrawalArgs
     | HarvestArgs
+    | CloseArgs
     | TradeArgs
     | RebalanceArgs
 
@@ -169,7 +176,7 @@ async function validateDegradedMode(
         return
     }
 
-    if (args.action === 'harvest') {
+    if (args.action === 'harvest' || args.action === 'close') {
         ensureSlippageCoverage(
             args.action,
             args.slippageSettings,
@@ -399,6 +406,46 @@ export async function runQuoteCommand(
                                 getEncodedHarvestManagementFeeEligibility(
                                     result.txData.data
                                 ),
+                            extCalls: normalizeExtCalls(result.extCalls),
+                        },
+                    ],
+                })
+            ) as Record<string, unknown>,
+        }
+    }
+
+    if (args.action === 'close') {
+        const result = await protocol.quoteClose({
+            ledger: args.fund,
+            coin: args.coin,
+            slippageSettings: args.slippageSettings,
+        })
+
+        return {
+            quote: serializeJson({
+                ...buildQuoteMeta(
+                    getSimulationProviderLabel(
+                        toolkit.describeConfiguredProviders(),
+                        toolkit.stats.routeProviders,
+                        toolkit.stats.txProviders
+                    ),
+                    degraded
+                ),
+            }) as Record<string, unknown>,
+            tx: serializeJson(
+                toPrivyRpcBody(result.txData, args.chainId)
+            ) as Record<string, unknown>,
+            encoding: serializeJson(
+                buildEncoding({
+                    txData: result.txData,
+                    functionName: 'closeFund',
+                    abi: [
+                        'function closeFund((address ledger,address coin,(address adapter,bytes callData)[] extCalls))',
+                    ],
+                    args: [
+                        {
+                            ledger: args.fund,
+                            coin: args.coin,
                             extCalls: normalizeExtCalls(result.extCalls),
                         },
                     ],
