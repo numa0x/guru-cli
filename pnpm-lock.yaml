@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@guru-fund/sdk':
-        specifier: ^0.2.11
-        version: 0.2.11
+        specifier: ^0.2.12
+        version: 0.2.12
       '@tenderly/sdk':
         specifier: ^0.3.1
         version: 0.3.1
@@ -63,8 +63,8 @@ packages:
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
-  '@guru-fund/sdk@0.2.11':
-    resolution: {integrity: sha512-acOJ1t6KR7RtFD0rr3ToQQ7P9WP7O5hxTeeOBAFNRx2swKpWl5TvN99fgAzvRUz9Nsye6IatTz6P6dzePOTJDA==}
+  '@guru-fund/sdk@0.2.12':
+    resolution: {integrity: sha512-qiG/Q9a8vcy7IeGQEivDciKd3xRVT0bIuxr+03MuBHUdz0Tm3/ofutwHzps+jrBbYzjaBahm3yWsTVElZDWiGA==}
 
   '@humanwhocodes/config-array@0.13.0':
     resolution: {integrity: sha512-DZLEEqFWQFiyK6h5YIeynKx7JlvCYWL0cImfSRXZ9l4Sg2efkFGTuFf6vzXjK1cq6IYkU+Eg/JizXw+TD2vRNw==}
@@ -817,7 +817,7 @@ snapshots:
 
   '@eslint/js@8.57.1': {}
 
-  '@guru-fund/sdk@0.2.11':
+  '@guru-fund/sdk@0.2.12':
     dependencies:
       ethers: 6.15.0
       zod: 3.25.76
